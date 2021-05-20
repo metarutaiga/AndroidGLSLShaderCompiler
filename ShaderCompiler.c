@@ -115,8 +115,29 @@ int main(int argc, char** argv)
     }
     else
     {
+      GLuint vertex = 0;
+      GLuint fragment = 0;
+      if (shaderType != GL_VERTEX_SHADER)
+      {
+	const GLchar* code[] = { "#version 100\nvoid main() { gl_Position = vec4(0); }" };
+	vertex = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex, 1, code, NULL);
+	glCompileShader(vertex);
+      }
+      if (shaderType != GL_FRAGMENT_SHADER)
+      {
+	const GLchar* code[] = { "#version 100\nvoid main() { gl_FragColor = vec4(0); }" };
+	fragment = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment, 1, code, NULL);
+	glCompileShader(fragment);
+      }
+      
       GLuint program = glCreateProgram();
       glAttachShader(program, shader);
+      if (vertex)
+	glAttachShader(program, vertex);
+      if (fragment)
+	glAttachShader(program, fragment);
       glLinkProgram(program);
 
       GLint status = 0;
@@ -135,9 +156,47 @@ int main(int argc, char** argv)
       }
       else
       {
-	
+	PFNGLGETPROGRAMBINARYOESPROC glGetProgramBinaryOES = NULL;
+	if (glGetProgramBinaryOES == NULL)
+	  glGetProgramBinaryOES = (PFNGLGETPROGRAMBINARYOESPROC)eglGetProcAddress("glGetProgramBinary");
+	if (glGetProgramBinaryOES == NULL)
+	  glGetProgramBinaryOES = (PFNGLGETPROGRAMBINARYOESPROC)eglGetProcAddress("glGetProgramBinaryOES");
+	if (glGetProgramBinaryOES == NULL)
+	{
+	  printf("%s is failed\n", "eglGetProcAddress");
+	  return 0;
+	}
+
+	GLint length = 0;
+	glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH_OES, &length); 
+	printf("%s : %d\n", "glGetProgramiv", length);
+
+	GLsizei size = 0;
+	GLenum binaryFormat = 0;
+	void* binary = malloc(length);
+	glGetProgramBinaryOES(program, length, &size, &binaryFormat, binary);
+	printf("%s : %d\n", "glGetProgramBinaryOES", size);
+	printf("%s : %d\n", "glGetProgramBinaryOES", binaryFormat);
+
+	if (argc >= 3)
+	{
+	  FILE* file = fopen(argv[2], "wb");
+	  if (file == NULL)
+	  {
+	    printf("%s is failed\n", argv[2]);
+	    return 0;
+	  }
+	  fwrite(binary, 1, size, file);
+	  fclose(file);
+	}
+
+	free(binary);
       }
 
+      if (vertex)
+	glDeleteShader(vertex);
+      if (fragment)
+	glDeleteShader(fragment);
       glDeleteProgram(program);
     }
 
