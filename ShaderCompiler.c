@@ -1,3 +1,9 @@
+//==============================================================================
+// Android GLSL Shader Compiler
+//
+// Copyright (c) 2021 TAiGA
+// https://github.com/metarutaiga/AndroidGLSLShaderCompiler
+//==============================================================================
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,16 +135,30 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
     GLuint fragment = 0;
     if (shaderType != GL_VERTEX_SHADER)
     {
-      const GLchar* code[] = { "#version 100\nvoid main() { gl_Position = vec4(0); }" };
+      const GLchar* code[] =
+      {
+	"#version 100", "\n",
+	"void main()\n"
+	"{\n"
+	"gl_Position = vec4(0);\n"
+	"}"
+      };
       vertex = glCreateShader(GL_VERTEX_SHADER);
-      glShaderSource(vertex, 1, code, NULL);
+      glShaderSource(vertex, 3, code, NULL);
       glCompileShader(vertex);
     }
     if (shaderType != GL_FRAGMENT_SHADER)
     {
-      const GLchar* code[] = { "#version 100\nvoid main() { gl_FragColor = vec4(0); }" };
+      const GLchar* code[] =
+      {
+	"#version 100", "\n",
+	"void main()\n"
+	"{\n"
+	"gl_FragColor = vec4(0);\n"
+	"}"
+      };
       fragment = glCreateShader(GL_FRAGMENT_SHADER);
-      glShaderSource(fragment, 1, code, NULL);
+      glShaderSource(fragment, 3, code, NULL);
       glCompileShader(fragment);
     }
       
@@ -218,6 +238,7 @@ bool serve(const char* ip, unsigned short port)
     printf("%s is failed\n", "epoll_create");
     return false;
   }
+  printf("%s : %d\n", "epoll_create", epoll);
 
   struct sockaddr_in sa;
   sa.sin_family = AF_INET;
@@ -241,6 +262,7 @@ bool serve(const char* ip, unsigned short port)
     printf("%s is failed\n", "listen");
     return false;
   }
+  printf("%s : %d\n", "listen",server);
   
   struct epoll_event ev;
   ev.events = EPOLLIN;
