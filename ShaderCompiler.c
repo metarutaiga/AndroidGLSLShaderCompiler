@@ -17,6 +17,31 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
+#include <setjmp.h>
+
+static jmp_buf buf;
+static sig_t sigsegv;
+
+static void handler(int type)
+{
+  longjmp(buf, 1);
+}
+
+static void register_handler()
+{
+  sigsegv = signal(SIGSEGV, handler);
+}
+
+static int check_handler()
+{
+  return setjmp(buf);
+}
+
+static void unregister_handler()
+{
+  signal(SIGSEGV, sigsegv);
+}
+
 bool eglCreate()
 {
   EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -109,11 +134,17 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
   }
 
   bool succeed = false;
-  
-  const GLchar* code[] = { shaderCode };
-  GLuint shader = glCreateShader(shaderType);
-  glShaderSource(shader, 1, code, NULL);
-  glCompileShader(shader);
+  GLuint shader = 0;
+
+  register_handler();
+  if (check_handler() == 0)
+  {
+    const GLchar* code[] = { shaderCode };
+    shader = glCreateShader(shaderType);
+    glShaderSource(shader, 1, code, NULL);
+    glCompileShader(shader);
+  }
+  unregister_handler();
 
   GLint status = 0;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -127,6 +158,14 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
       glGetShaderInfoLog(shader, length, NULL, log);
       printf("%s : %s\n", "Shader", log);
       free(log);
+
+      if (length == 0)
+      {
+	glDeleteShader(shader);
+	eglShutdown();
+	eglCreate();
+	return false;
+      }
     }
   }
   else
@@ -251,6 +290,10 @@ bool serve(const char* ip, unsigned short port)
     return false;
   }
 
+  int enable = 1;
+  setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+  setsockopt(server, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+  
   if (bind(server, (struct sockaddr*)&sa, sizeof(sa)) < 0)
   {
     printf("%s is failed\n", "bind");
@@ -315,7 +358,7 @@ bool serve(const char* ip, unsigned short port)
 	  {
 	    data->shaderType = header[1];
 	    data->shaderSize = header[2];
-	    data->shaderCode = calloc(data->shaderSize, 1);
+	    data->shaderCode = calloc(data->shaderSize + 1, 1);
 	  }
 	}
 	if (data->shaderRead != data->shaderSize)
