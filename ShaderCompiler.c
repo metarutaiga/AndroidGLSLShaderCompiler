@@ -135,10 +135,20 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
 
   bool succeed = false;
   GLuint shader = 0;
+  int version = 100;
 
   register_handler();
   if (check_handler() == 0)
   {
+    if (strstr(shaderCode, "#version 100"))
+      version = 100;
+    if (strstr(shaderCode, "#version 300"))
+      version = 300;
+    if (strstr(shaderCode, "#version 310"))
+      version = 310;
+    if (strstr(shaderCode, "#version 320"))
+      version = 320;
+    
     const GLchar* code[] = { shaderCode };
     shader = glCreateShader(shaderType);
     glShaderSource(shader, 1, code, NULL);
@@ -176,11 +186,14 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
     {
       const GLchar* code[] =
       {
-	"#version 100", "\n",
-	"void main()\n"
-	"{\n"
-	"gl_Position = vec4(0);\n"
-	"}"
+	( version == 100 ? "#version 100" :
+	  version == 300 ? "#version 300 es" :
+	  version == 310 ? "#version 310 es" :
+	  version == 320 ? "#version 320 es" : "#version 100" ), "\n",
+	( "void main()\n"
+	  "{\n"
+	  "gl_Position = vec4(0);\n"
+	  "}" )
       };
       vertex = glCreateShader(GL_VERTEX_SHADER);
       glShaderSource(vertex, 3, code, NULL);
@@ -190,11 +203,21 @@ bool shaderCompile(int shaderVersion, GLenum shaderType, const char* shaderCode,
     {
       const GLchar* code[] =
       {
-	"#version 100", "\n",
-	"void main()\n"
-	"{\n"
-	"gl_FragColor = vec4(0);\n"
-	"}"
+	( version == 100 ? "#version 100" :
+	  version == 300 ? "#version 300 es" :
+	  version == 310 ? "#version 310 es" :
+	  version == 320 ? "#version 320 es" : "#version 100" ), "\n",
+	( version == 100 ?
+	  "void main()\n"
+	  "{\n"
+	  "gl_FragColor = vec4(0);\n"
+	  "}"
+	  :
+	  "out mediump vec4 fragColor;\n"
+	  "void main()\n"
+	  "{\n"
+	  "fragColor = vec4(0);\n"
+	  "}" )
       };
       fragment = glCreateShader(GL_FRAGMENT_SHADER);
       glShaderSource(fragment, 3, code, NULL);
